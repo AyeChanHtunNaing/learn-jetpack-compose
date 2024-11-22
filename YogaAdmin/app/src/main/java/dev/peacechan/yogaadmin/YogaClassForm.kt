@@ -22,44 +22,74 @@ import java.util.*
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun YogaClassForm(navController: NavHostController) {
-    val daysOfWeek = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
-    var selectedDayOfWeek by remember { mutableStateOf("") }
-    var dropdownExpanded by remember { mutableStateOf(false) }
-    var selectedTime by remember { mutableStateOf("") }
-    var showTimePicker by rememberSaveable { mutableStateOf(false) }
-    var capacity by remember { mutableStateOf("") }
-    var duration by remember { mutableStateOf("") }
-    var price by remember { mutableStateOf("") }
-    var selectedClassType by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
+fun YogaClassForm(
+    navController: NavHostController,
+    viewModel: YogaClassViewModel,
+    yogaClassId: Int? // Nullable ID for editing or adding
+) {
+    // Load the yoga class for editing
+    val yogaClass = remember(yogaClassId) {
+        yogaClassId?.let { id ->
+            viewModel.yogaClasses.value.find { it.id == id }
+        }
+    }
 
+    // Pre-fill form states with existing data if available
+    var selectedDayOfWeek by rememberSaveable { mutableStateOf(yogaClass?.dayOfWeek ?: "") }
+    var selectedTime by rememberSaveable { mutableStateOf(yogaClass?.time ?: "") }
+    var showTimePicker by rememberSaveable { mutableStateOf(false) }
+    var capacity by rememberSaveable { mutableStateOf(yogaClass?.capacity ?: "") }
+    var duration by rememberSaveable { mutableStateOf(yogaClass?.duration ?: "") }
+    var price by rememberSaveable { mutableStateOf(yogaClass?.price ?: "") }
+    var selectedClassType by rememberSaveable { mutableStateOf(yogaClass?.classType ?: "") }
+    var description by rememberSaveable { mutableStateOf(yogaClass?.description ?: "") }
+
+    // Validation and confirmation state
     var showError by remember { mutableStateOf(false) }
     var showConfirmation by remember { mutableStateOf(false) }
 
-    val scrollState = rememberScrollState()
+    val daysOfWeek = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
     val classTypes = listOf("Flow Yoga", "Aerial Yoga", "Family Yoga")
 
     if (showConfirmation) {
+        // Show confirmation screen
         ConfirmationScreen(
-            selectedDayOfWeek,
-            selectedTime,
-            capacity,
-            duration,
-            price,
-            selectedClassType,
-            description,
+            dayOfWeek = selectedDayOfWeek,
+            time = selectedTime,
+            capacity = capacity,
+            duration = duration,
+            price = price,
+            classType = selectedClassType,
+            description = description,
             onEdit = { showConfirmation = false },
-            onConfirm = { /* Handle final confirmation */ }
+            onConfirm = {
+                val newClass = YogaClass(
+                    id = yogaClass?.id ?: 0,
+                    dayOfWeek = selectedDayOfWeek,
+                    time = selectedTime,
+                    capacity = capacity,
+                    duration = duration,
+                    price = price,
+                    classType = selectedClassType,
+                    description = description
+                )
+                if (yogaClass == null) {
+                    viewModel.insertYogaClass(newClass) // Add new class
+                } else {
+                    viewModel.updateYogaClass(newClass) // Update existing class
+                }
+                navController.navigateUp() // Navigate back to the main screen
+            }
         )
     } else {
+        // Show the form
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Add Yoga Class") },
+                    title = { Text(if (yogaClass == null) "Add Yoga Class" else "Edit Yoga Class") },
                     navigationIcon = {
                         IconButton(onClick = { navController.navigateUp() }) {
-                            Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
                         }
                     }
                 )
@@ -69,46 +99,22 @@ fun YogaClassForm(navController: NavHostController) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
-                        .verticalScroll(scrollState),
+                        .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     horizontalAlignment = Alignment.Start
                 ) {
                     Spacer(modifier = Modifier.height(80.dp))
 
                     // Dropdown for Day of the Week
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        OutlinedTextField(
-                            value = if (selectedDayOfWeek.isEmpty()) "Select Day of the Week" else selectedDayOfWeek,
-                            onValueChange = {},
-                            readOnly = true,
-                            trailingIcon = {
-                                Icon(
-                                    imageVector = Icons.Filled.ArrowDropDown,
-                                    contentDescription = "Dropdown",
-                                    Modifier.clickable { dropdownExpanded = true }
-                                )
-                            },
-                            label = { Text("Day of the Week (Required)") },
-                            modifier = Modifier.fillMaxWidth(),
-                            isError = showError && selectedDayOfWeek.isEmpty()
-                        )
-                        DropdownMenu(
-                            expanded = dropdownExpanded,
-                            onDismissRequest = { dropdownExpanded = false }
-                        ) {
-                            daysOfWeek.forEach { day ->
-                                DropdownMenuItem(
-                                    onClick = {
-                                        selectedDayOfWeek = day
-                                        dropdownExpanded = false
-                                    },
-                                    text = { Text(day) }
-                                )
-                            }
-                        }
-                    }
+                    DropdownField(
+                        label = "Day of the Week (Required)",
+                        items = daysOfWeek,
+                        selectedValue = selectedDayOfWeek,
+                        onValueChange = { selectedDayOfWeek = it },
+                        showError = showError && selectedDayOfWeek.isEmpty()
+                    )
 
-                    // Time Selector for "Time of Course"
+                    // Time Selector
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -136,13 +142,16 @@ fun YogaClassForm(navController: NavHostController) {
                     }
 
 
-                    // Capacity, Duration, Price Inputs
+                    // Input fields for Capacity, Duration, Price
                     TextFieldWithValidation("Capacity (Required)", capacity, showError && capacity.isEmpty()) { capacity = it }
                     TextFieldWithValidation("Duration (minutes) (Required)", duration, showError && duration.isEmpty()) { duration = it }
-                    TextFieldWithValidation("Price per Class (£) (Required)", price, showError && price.isEmpty()) { price = it }
+                    TextFieldWithValidation("Price (£) (Required)", price, showError && price.isEmpty()) { price = it }
 
-                    // Radio Button Group for "Type of Class"
-                    Text("Type of Class (Required)", color = if (showError && selectedClassType.isEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground)
+                    // Radio Buttons for Class Type
+                    Text(
+                        text = "Type of Class (Required)",
+                        color = if (showError && selectedClassType.isEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground
+                    )
                     classTypes.forEach { classType ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -159,7 +168,7 @@ fun YogaClassForm(navController: NavHostController) {
                         }
                     }
 
-                    // Description Input
+                    // Description
                     OutlinedTextField(
                         value = description,
                         onValueChange = { description = it },
@@ -186,6 +195,48 @@ fun YogaClassForm(navController: NavHostController) {
         )
     }
 }
+
+// Reusable DropdownField
+@Composable
+fun DropdownField(
+    label: String,
+    items: List<String>,
+    selectedValue: String,
+    onValueChange: (String) -> Unit,
+    showError: Boolean = false
+) {
+    var dropdownExpanded by remember { mutableStateOf(false) }
+    OutlinedTextField(
+        value = if (selectedValue.isEmpty()) label else selectedValue,
+        onValueChange = {},
+        readOnly = true,
+        trailingIcon = {
+            Icon(
+                imageVector = Icons.Default.ArrowDropDown,
+                contentDescription = "Dropdown",
+                modifier = Modifier.clickable { dropdownExpanded = true }
+            )
+        },
+        label = { Text(label) },
+        isError = showError,
+        modifier = Modifier.fillMaxWidth()
+    )
+    DropdownMenu(
+        expanded = dropdownExpanded,
+        onDismissRequest = { dropdownExpanded = false }
+    ) {
+        items.forEach { item ->
+            DropdownMenuItem(
+                onClick = {
+                    onValueChange(item)
+                    dropdownExpanded = false
+                },
+                text = { Text(item) }
+            )
+        }
+    }
+}
+
 // Custom TimePickerDialog Composable
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
