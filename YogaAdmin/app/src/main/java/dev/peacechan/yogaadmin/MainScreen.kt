@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -42,10 +43,14 @@ fun MainScreen(navController: NavHostController, viewModel: YogaClassViewModel) 
                 title = { Text("Yoga Classes") },
                 actions = {
 
-
-                    // Reset Database Button
+// Reset Database Button
                     IconButton(onClick = { resetDatabaseWithInternetCheck(context, viewModel) }) {
                         Icon(Icons.Filled.Refresh, contentDescription = "Reset Database")
+                    }
+
+                    // View Location Button
+                    IconButton(onClick = { navController.navigate("userLocation") }) {
+                        Icon(Icons.Filled.LocationOn, contentDescription = "View Location")
                     }
                 }
             )
@@ -56,6 +61,7 @@ fun MainScreen(navController: NavHostController, viewModel: YogaClassViewModel) 
                 .fillMaxSize()
                 .padding(padding)
         ) {
+
             // Search Section
             SearchBar(
                 searchQuery = searchQuery,
@@ -72,6 +78,7 @@ fun MainScreen(navController: NavHostController, viewModel: YogaClassViewModel) 
                 }
             )
             SyncButton(viewModel = viewModel)
+
             // Display Classes
             val classesToShow = if (searchResults.isNotEmpty()) searchResults else yogaClasses
 

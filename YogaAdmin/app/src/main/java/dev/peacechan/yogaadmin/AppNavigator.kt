@@ -20,6 +20,10 @@ fun AppNavigator(navController: NavHostController, viewModel: YogaClassViewModel
                 viewModel = viewModel
             )
         }
+//location
+        composable("userLocation") {
+            UserLocationDisplay(navController = navController)
+        }
 
         // Yoga Class Form
         composable(
@@ -72,4 +76,5 @@ fun AppNavigator(navController: NavHostController, viewModel: YogaClassViewModel
             )
         }
     }
+
 }

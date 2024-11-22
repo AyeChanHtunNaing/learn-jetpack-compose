@@ -16,6 +16,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             val navController = rememberNavController()
             AppNavigator(navController = navController, viewModel = viewModel)
+
         }
+
     }
+
 }
