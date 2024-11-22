@@ -3,6 +3,8 @@ package dev.peacechan.yogaadmin
 import android.annotation.SuppressLint
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -33,6 +35,9 @@ fun YogaClassForm(
             viewModel.yogaClasses.value.find { it.id == id }
         }
     }
+
+    // Load the instances of the respective yoga class
+    val classInstances by viewModel.getInstancesForYogaClass(yogaClassId ?: 0).collectAsState(initial = emptyList())
 
     // Pre-fill form states with existing data if available
     var selectedDayOfWeek by rememberSaveable { mutableStateOf(yogaClass?.dayOfWeek ?: "") }
@@ -95,106 +100,163 @@ fun YogaClassForm(
                 )
             },
             content = {
-                Column(
+                LazyColumn(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    horizontalAlignment = Alignment.Start
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Spacer(modifier = Modifier.height(80.dp))
+                    // Form Fields
+                    item {
+                        Spacer(modifier = Modifier.height(100.dp))
 
-                    // Dropdown for Day of the Week
-                    DropdownField(
-                        label = "Day of the Week (Required)",
-                        items = daysOfWeek,
-                        selectedValue = selectedDayOfWeek,
-                        onValueChange = { selectedDayOfWeek = it },
-                        showError = showError && selectedDayOfWeek.isEmpty()
-                    )
-
-                    // Time Selector
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showTimePicker = true }
-                    ) {
-                        OutlinedTextField(
-                            value = if (selectedTime.isEmpty()) "Select Time" else selectedTime,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Time of Course (Required)") },
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = false
+                        DropdownField(
+                            label = "Day of the Week (Required)",
+                            items = daysOfWeek,
+                            selectedValue = selectedDayOfWeek,
+                            onValueChange = { selectedDayOfWeek = it },
+                            showError = showError && selectedDayOfWeek.isEmpty()
                         )
-                    }
 
-                    // Time Picker Dialog
-                    if (showTimePicker) {
-                        TimePickerDialog(
-                            onDismiss = { showTimePicker = false },
-                            onConfirm = { hour, minute ->
-                                selectedTime = String.format("%02d:%02d", hour, minute)
-                                showTimePicker = false
-                            }
-                        )
-                    }
-
-
-                    // Input fields for Capacity, Duration, Price
-                    TextFieldWithValidation("Capacity (Required)", capacity, showError && capacity.isEmpty()) { capacity = it }
-                    TextFieldWithValidation("Duration (minutes) (Required)", duration, showError && duration.isEmpty()) { duration = it }
-                    TextFieldWithValidation("Price (£) (Required)", price, showError && price.isEmpty()) { price = it }
-
-                    // Radio Buttons for Class Type
-                    Text(
-                        text = "Type of Class (Required)",
-                        color = if (showError && selectedClassType.isEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground
-                    )
-                    classTypes.forEach { classType ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                                .clickable { selectedClassType = classType }
+                                .clickable { showTimePicker = true }
                         ) {
-                            RadioButton(
-                                selected = selectedClassType == classType,
-                                onClick = { selectedClassType = classType }
+                            OutlinedTextField(
+                                value = if (selectedTime.isEmpty()) "Select Time" else selectedTime,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Time of Course (Required)") },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = false
                             )
-                            Text(text = classType, modifier = Modifier.padding(start = 8.dp))
+                        }
+
+                        if (showTimePicker) {
+                            TimePickerDialog(
+                                onDismiss = { showTimePicker = false },
+                                onConfirm = { hour, minute ->
+                                    selectedTime = String.format("%02d:%02d", hour, minute)
+                                    showTimePicker = false
+                                }
+                            )
+                        }
+
+                        TextFieldWithValidation("Capacity (Required)", capacity, showError && capacity.isEmpty()) { capacity = it }
+                        TextFieldWithValidation("Duration (minutes) (Required)", duration, showError && duration.isEmpty()) { duration = it }
+                        TextFieldWithValidation("Price (£) (Required)", price, showError && price.isEmpty()) { price = it }
+
+                        Text(
+                            text = "Type of Class (Required)",
+                            color = if (showError && selectedClassType.isEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground
+                        )
+                        classTypes.forEach { classType ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                                    .clickable { selectedClassType = classType }
+                            ) {
+                                RadioButton(
+                                    selected = selectedClassType == classType,
+                                    onClick = { selectedClassType = classType }
+                                )
+                                Text(text = classType, modifier = Modifier.padding(start = 8.dp))
+                            }
+                        }
+
+                        OutlinedTextField(
+                            value = description,
+                            onValueChange = { description = it },
+                            label = { Text("Description (Optional)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Button(
+                            onClick = {
+                                if (selectedDayOfWeek.isEmpty() || selectedTime.isEmpty() || capacity.isEmpty() || duration.isEmpty() || price.isEmpty() || selectedClassType.isEmpty()) {
+                                    showError = true
+                                } else {
+                                    showError = false
+                                    showConfirmation = true
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .wrapContentWidth(Alignment.End)
+
+                        ) {
+                            Text("Submit")
+                        }
+
+                        Button(
+                            onClick = {
+                                if (selectedDayOfWeek.isNotEmpty() && yogaClass?.id != null) {
+                                    val courseType = selectedClassType
+                                    val time = selectedTime
+                                    navController.navigate("instanceForm/$selectedDayOfWeek/${yogaClass?.id ?: 0}/$courseType/$time")
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Add Instance")
                         }
                     }
 
-                    // Description
-                    OutlinedTextField(
-                        value = description,
-                        onValueChange = { description = it },
-                        label = { Text("Description (Optional)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    // Class Instances
+                    if (classInstances.isNotEmpty()) {
+                        item {
+                            Text("Class Instances", style = MaterialTheme.typography.titleMedium)
+                        }
+                        items(classInstances) { instance ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text("Start Date: ${instance.date}", style = MaterialTheme.typography.bodyMedium)
+                                    Text("Teacher's Name : ${instance.teacher}", style = MaterialTheme.typography.bodySmall)
+                                    if (instance.comments.isNotEmpty()) {
+                                        Text("Comments: ${instance.comments}", style = MaterialTheme.typography.bodySmall)
+                                    }
+                                    Row(
+                                        horizontalArrangement = Arrangement.End,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        TextButton(onClick = {
+                                            navController.navigate("updateInstanceForm/${instance.id}")
+                                        }) {
+                                            Text("Edit")
+                                        }
+                                        TextButton(onClick = {
+                                            viewModel.deleteClassInstance(instance)
+                                            if (yogaClass != null) {
+                                                navController.navigate("yogaClassForm/${yogaClass.id}")
+                                            }
 
-                    // Submit Button
-                    Button(
-                        onClick = {
-                            if (selectedDayOfWeek.isEmpty() || selectedTime.isEmpty() || capacity.isEmpty() || duration.isEmpty() || price.isEmpty() || selectedClassType.isEmpty()) {
-                                showError = true
-                            } else {
-                                showError = false
-                                showConfirmation = true
+                                        }) {
+                                            Text("Delete")
+                                        }
+                                    }
+                                }
+
+
                             }
-                        },
-                        modifier = Modifier.align(Alignment.End)
-                    ) {
-                        Text("Submit")
+                        }
+
                     }
                 }
             }
         )
     }
 }
+
+
+
 
 // Reusable DropdownField
 @Composable
