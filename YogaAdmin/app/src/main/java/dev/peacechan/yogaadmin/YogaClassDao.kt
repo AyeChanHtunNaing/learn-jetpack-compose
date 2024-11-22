@@ -39,4 +39,34 @@ interface YogaClassDao {
 
     @Query("SELECT * FROM course_instances WHERE yogaClassId = :yogaClassId")
     suspend fun getInstancesForClass(yogaClassId: Int): List<CourseInstance>
-}
+
+    // Search by Teacher Name
+    @Query("""
+        SELECT yoga_classes.* 
+        FROM yoga_classes 
+        INNER JOIN course_instances ON yoga_classes.id = course_instances.yogaClassId
+        WHERE course_instances.teacher LIKE :name
+        ORDER BY course_instances.date
+    """)
+    suspend fun searchByTeacherName(name: String): List<YogaClass>
+
+    // Search by Date
+    @Query("""
+        SELECT yoga_classes.* 
+        FROM yoga_classes 
+        INNER JOIN course_instances ON yoga_classes.id = course_instances.yogaClassId
+        WHERE course_instances.date = :date
+    """)
+    suspend fun searchByDate(date: String): List<YogaClass>
+
+    // Search by Day of the Week
+    @Query("""
+        SELECT yoga_classes.* 
+        FROM yoga_classes 
+        WHERE yoga_classes.dayOfWeek = :dayOfWeek
+        ORDER BY yoga_classes.time
+    """)
+    suspend fun searchByDayOfWeek(dayOfWeek: String): List<YogaClass>
+    }
+
+

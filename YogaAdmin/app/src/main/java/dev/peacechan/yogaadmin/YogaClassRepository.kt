@@ -18,4 +18,19 @@ class YogaClassRepository(private val dao: YogaClassDao) {
     suspend fun getInstancesForClass(yogaClassId: Int): List<CourseInstance> {
         return dao.getInstancesForClass(yogaClassId)
     }
+
+    //search
+    suspend fun searchClassesByTeacherName(name: String): List<YogaClass> {
+        return dao.searchByTeacherName("%$name%")
+    }
+
+    suspend fun searchClassesByDate(date: String): List<YogaClass> {
+        return dao.searchByDate(date)
+    }
+
+    suspend fun searchClassesByDayOfWeek(dayOfWeek: String): List<YogaClass> {
+        return dao.searchByDayOfWeek(dayOfWeek)
+    }
+
+
 }

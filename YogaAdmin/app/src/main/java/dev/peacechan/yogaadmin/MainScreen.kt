@@ -6,17 +6,21 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun MainScreen(navController: NavHostController, viewModel: YogaClassViewModel) {
     val yogaClasses by viewModel.yogaClasses.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsState()
+    var searchQuery by remember { mutableStateOf("") }
 
     Scaffold(
         floatingActionButton = {
@@ -25,28 +29,66 @@ fun MainScreen(navController: NavHostController, viewModel: YogaClassViewModel) 
             }
         },
         topBar = { TopAppBar(title = { Text("Yoga Classes") }) }
-    ) {
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(padding) // Handle padding to avoid overlapping with the TopAppBar
         ) {
-            Spacer(modifier = Modifier.height(80.dp)) // Add 80dp space below the app bar
+            // Search Section
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp) // Add padding for the search section
+            ) {
+                // Search Input
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        label = { Text("Search") },
+                        modifier = Modifier.weight(1f)
+                    )
+                    // Search Button
+                    Button(onClick = {
+                        when {
+                            searchQuery.isNotBlank() -> {
+                                viewModel.searchByTeacher(searchQuery)
+                                viewModel.searchByDate(searchQuery)
+                                viewModel.searchByDayOfWeek(searchQuery)
+                            }
+                            else -> {
+                                viewModel.clearSearch() // Clear results if the search query is empty
+                            }
+                        }
+                    }) {
+                        Icon(Icons.Filled.Search, contentDescription = "Search")
+                    }
 
-            if (yogaClasses.isEmpty()) {
+                }
+            }
+
+            // Display Classes
+            val classesToShow = if (searchResults.isNotEmpty()) searchResults else yogaClasses
+
+            if (classesToShow.isEmpty()) {
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    Text("There are no courses. Add new courses to get started.")
+                    Text("No matching courses found.")
                 }
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    items(yogaClasses) { yogaClass ->
+                    items(classesToShow) { yogaClass ->
                         YogaClassItem(
                             yogaClass = yogaClass,
                             onEdit = { navController.navigate("yogaClassForm/${yogaClass.id}") },
@@ -58,12 +100,13 @@ fun MainScreen(navController: NavHostController, viewModel: YogaClassViewModel) 
         }
     }
 }
+
 @Composable
 fun YogaClassItem(yogaClass: YogaClass, onEdit: () -> Unit, onDelete: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp), // Add padding between cards
+            .padding(vertical = 4.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
@@ -71,15 +114,13 @@ fun YogaClassItem(yogaClass: YogaClass, onEdit: () -> Unit, onDelete: () -> Unit
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Header with Class Type
             Text(
                 text = yogaClass.classType,
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-            Divider() // Add a divider to separate sections
+            Divider()
 
-            // Details Section
             Column(modifier = Modifier.padding(vertical = 8.dp)) {
                 DetailRow(label = "Day", value = yogaClass.dayOfWeek)
                 DetailRow(label = "Time", value = yogaClass.time)
@@ -88,7 +129,6 @@ fun YogaClassItem(yogaClass: YogaClass, onEdit: () -> Unit, onDelete: () -> Unit
                 DetailRow(label = "Capacity", value = "${yogaClass.capacity} attendees")
             }
 
-            // Actions (Edit/Delete)
             Divider(modifier = Modifier.padding(vertical = 8.dp))
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -116,12 +156,12 @@ fun DetailRow(label: String, value: String) {
         Text(
             text = "$label:",
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f) // Align labels
+            modifier = Modifier.weight(1f)
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(2f) // Align values
+            modifier = Modifier.weight(2f)
         )
     }
 }

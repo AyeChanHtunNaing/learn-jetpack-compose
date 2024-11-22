@@ -87,4 +87,30 @@ class YogaClassViewModel(private val repository: YogaClassRepository) : ViewMode
         }
     }
 
+    //search
+    private val _searchResults = MutableStateFlow<List<YogaClass>>(emptyList())
+    val searchResults: StateFlow<List<YogaClass>> get() = _searchResults
+
+    fun searchByTeacher(name: String) {
+        viewModelScope.launch {
+            _searchResults.value = repository.searchClassesByTeacherName(name)
+        }
+    }
+
+    fun searchByDate(date: String) {
+        viewModelScope.launch {
+            _searchResults.value = repository.searchClassesByDate(date)
+        }
+    }
+
+    fun searchByDayOfWeek(dayOfWeek: String) {
+        viewModelScope.launch {
+            _searchResults.value = repository.searchClassesByDayOfWeek(dayOfWeek)
+        }
+    }
+
+    fun clearSearch() {
+        _searchResults.value = emptyList()
+    }
 }
+
