@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 import java.util.*
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -25,143 +26,166 @@ fun YogaClassForm(navController: NavHostController) {
     val daysOfWeek = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
     var selectedDayOfWeek by remember { mutableStateOf("") }
     var dropdownExpanded by remember { mutableStateOf(false) }
-    var selectedTime by rememberSaveable { mutableStateOf("") }
+    var selectedTime by remember { mutableStateOf("") }
     var showTimePicker by rememberSaveable { mutableStateOf(false) }
     var capacity by remember { mutableStateOf("") }
     var duration by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
-    var selectedClassType by remember { mutableStateOf("") } // Selected radio button value
+    var selectedClassType by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
 
+    var showError by remember { mutableStateOf(false) }
+    var showConfirmation by remember { mutableStateOf(false) }
+
     val scrollState = rememberScrollState()
-    val classTypes = listOf("Flow Yoga", "Aerial Yoga", "Family Yoga") // Radio button options
+    val classTypes = listOf("Flow Yoga", "Aerial Yoga", "Family Yoga")
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Add Yoga Class") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        },
-        content = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-                    .verticalScroll(scrollState),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalAlignment = Alignment.Start
-            ) {
-                Spacer(modifier = Modifier.height(80.dp))
-
-                // Dropdown for Day of the Week
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    OutlinedTextField(
-                        value = if (selectedDayOfWeek.isEmpty()) "Select Day of the Week" else selectedDayOfWeek,
-                        onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = {
-                            Icon(
-                                imageVector = Icons.Filled.ArrowDropDown,
-                                contentDescription = "Dropdown",
-                                Modifier.clickable { dropdownExpanded = true }
-                            )
-                        },
-                        label = { Text("Day of the Week (Required)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    DropdownMenu(
-                        expanded = dropdownExpanded,
-                        onDismissRequest = { dropdownExpanded = false }
-                    ) {
-                        daysOfWeek.forEach { day ->
-                            DropdownMenuItem(
-                                onClick = {
-                                    selectedDayOfWeek = day
-                                    dropdownExpanded = false
-                                },
-                                text = { Text(day) }
-                            )
+    if (showConfirmation) {
+        ConfirmationScreen(
+            selectedDayOfWeek,
+            selectedTime,
+            capacity,
+            duration,
+            price,
+            selectedClassType,
+            description,
+            onEdit = { showConfirmation = false },
+            onConfirm = { /* Handle final confirmation */ }
+        )
+    } else {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Add Yoga Class") },
+                    navigationIcon = {
+                        IconButton(onClick = { navController.navigateUp() }) {
+                            Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
                         }
                     }
-                }
-
-                // Time Selector for "Time of Course"
-                Box(
+                )
+            },
+            content = {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { showTimePicker = true }
+                        .padding(16.dp)
+                        .verticalScroll(scrollState),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.Start
                 ) {
-                    OutlinedTextField(
-                        value = if (selectedTime.isEmpty()) "Select Time" else selectedTime,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Time of Course (Required)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = false
-                    )
-                }
+                    Spacer(modifier = Modifier.height(80.dp))
 
-                // Time Picker Dialog
-                if (showTimePicker) {
-                    TimePickerDialog(
-                        onDismiss = { showTimePicker = false },
-                        onConfirm = { hour, minute ->
-                            selectedTime = String.format("%02d:%02d", hour, minute)
-                            showTimePicker = false
+                    // Dropdown for Day of the Week
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = if (selectedDayOfWeek.isEmpty()) "Select Day of the Week" else selectedDayOfWeek,
+                            onValueChange = {},
+                            readOnly = true,
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = Icons.Filled.ArrowDropDown,
+                                    contentDescription = "Dropdown",
+                                    Modifier.clickable { dropdownExpanded = true }
+                                )
+                            },
+                            label = { Text("Day of the Week (Required)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            isError = showError && selectedDayOfWeek.isEmpty()
+                        )
+                        DropdownMenu(
+                            expanded = dropdownExpanded,
+                            onDismissRequest = { dropdownExpanded = false }
+                        ) {
+                            daysOfWeek.forEach { day ->
+                                DropdownMenuItem(
+                                    onClick = {
+                                        selectedDayOfWeek = day
+                                        dropdownExpanded = false
+                                    },
+                                    text = { Text(day) }
+                                )
+                            }
                         }
-                    )
-                }
+                    }
 
-                // Capacity, Duration, Price Inputs
-                TextFieldWithValidation("Capacity (Required)", capacity) { capacity = it }
-                TextFieldWithValidation("Duration (minutes) (Required)", duration) { duration = it }
-                TextFieldWithValidation("Price per Class (£) (Required)", price) { price = it }
-
-                // Radio Button Group for "Type of Class"
-                Text("Type of Class (Required)")
-                classTypes.forEach { classType ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                    // Time Selector for "Time of Course"
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .clickable { selectedClassType = classType }
+                            .clickable { showTimePicker = true }
                     ) {
-                        RadioButton(
-                            selected = selectedClassType == classType,
-                            onClick = { selectedClassType = classType }
+                        OutlinedTextField(
+                            value = if (selectedTime.isEmpty()) "Select Time" else selectedTime,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Time of Course (Required)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = false
                         )
-                        Text(text = classType, modifier = Modifier.padding(start = 8.dp))
+                    }
+
+                    // Time Picker Dialog
+                    if (showTimePicker) {
+                        TimePickerDialog(
+                            onDismiss = { showTimePicker = false },
+                            onConfirm = { hour, minute ->
+                                selectedTime = String.format("%02d:%02d", hour, minute)
+                                showTimePicker = false
+                            }
+                        )
+                    }
+
+
+                    // Capacity, Duration, Price Inputs
+                    TextFieldWithValidation("Capacity (Required)", capacity, showError && capacity.isEmpty()) { capacity = it }
+                    TextFieldWithValidation("Duration (minutes) (Required)", duration, showError && duration.isEmpty()) { duration = it }
+                    TextFieldWithValidation("Price per Class (£) (Required)", price, showError && price.isEmpty()) { price = it }
+
+                    // Radio Button Group for "Type of Class"
+                    Text("Type of Class (Required)", color = if (showError && selectedClassType.isEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground)
+                    classTypes.forEach { classType ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clickable { selectedClassType = classType }
+                        ) {
+                            RadioButton(
+                                selected = selectedClassType == classType,
+                                onClick = { selectedClassType = classType }
+                            )
+                            Text(text = classType, modifier = Modifier.padding(start = 8.dp))
+                        }
+                    }
+
+                    // Description Input
+                    OutlinedTextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        label = { Text("Description (Optional)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // Submit Button
+                    Button(
+                        onClick = {
+                            if (selectedDayOfWeek.isEmpty() || selectedTime.isEmpty() || capacity.isEmpty() || duration.isEmpty() || price.isEmpty() || selectedClassType.isEmpty()) {
+                                showError = true
+                            } else {
+                                showError = false
+                                showConfirmation = true
+                            }
+                        },
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text("Submit")
                     }
                 }
-
-                // Description Input
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Description (Optional)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Submit Button
-                Button(
-                    onClick = {
-                        // Add validation and form submission logic here
-                    },
-                    modifier = Modifier.align(Alignment.End)
-                ) {
-                    Text("Submit")
-                }
             }
-        }
-    )
+        )
+    }
 }
-
 // Custom TimePickerDialog Composable
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -199,12 +223,65 @@ fun TimePickerDialog(
 }
 
 @Composable
-fun TextFieldWithValidation(label: String, value: String, onValueChange: (String) -> Unit) {
+fun TextFieldWithValidation(label: String, value: String, isError: Boolean, onValueChange: (String) -> Unit) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
         modifier = Modifier.fillMaxWidth(),
-        keyboardOptions = KeyboardOptions.Default
+        keyboardOptions = KeyboardOptions.Default,
+        isError = isError
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
+@Composable
+fun ConfirmationScreen(
+    dayOfWeek: String,
+    time: String,
+    capacity: String,
+    duration: String,
+    price: String,
+    classType: String,
+    description: String,
+    onEdit: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Confirm Details") }
+            )
+        },
+        content = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.Start
+            ) {
+                Text("Day of the Week: $dayOfWeek")
+                Text("Time: $time")
+                Text("Capacity: $capacity")
+                Text("Duration: $duration minutes")
+                Text("Price: £$price")
+                Text("Class Type: $classType")
+                Text("Description: ${if (description.isNotEmpty()) description else "N/A"}")
+
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Button(onClick = onEdit) {
+                        Text("Edit")
+                    }
+                    Button(onClick = onConfirm) {
+                        Text("Confirm")
+                    }
+                }
+            }
+        }
     )
 }
